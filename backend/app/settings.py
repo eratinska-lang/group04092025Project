@@ -18,6 +18,8 @@ class DatabaseSettings(BaseSettings):
         return url
 
 
+
+
 class Settings(DatabaseSettings):
     DEBUG: bool = False
 
