@@ -16,6 +16,8 @@ services:
       "
     networks:
       - main_network
+    env_file:
+      - .env
 
   frontend:
     container_name: frontend
