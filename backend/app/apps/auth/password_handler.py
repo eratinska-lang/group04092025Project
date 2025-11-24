@@ -6,7 +6,6 @@ class PasswordHandler:
 
     @classmethod
     async def get_password_hash(cls, password: str) -> str:
-        print(cls, 5555555555555555555555555555)
         return cls.pwd_context.hash(password)
 
     @classmethod
