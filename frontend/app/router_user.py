@@ -54,6 +54,8 @@ async def user_register(request: Request, email: str = Form(''), username: str =
         }
         response = await client.post("http://backend:20001/users/create", json=payload, headers=headers)
 
+
+
     response = RedirectResponse(request.url_for('index'), status_code=status.HTTP_303_SEE_OTHER)
 
     return response
