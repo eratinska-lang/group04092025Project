@@ -26,7 +26,10 @@ async def user_register(request: Request, email: str = Form(''), username: str =
     context = {
         "request": request,
         "title": "Register",
-        "user": {}
+        "user": {},
+        "email": email,
+        "username": username,
+        "error": ""
     }
     if request.method == "GET":
         response = templates.TemplateResponse('pages/register.html', context=context)
@@ -53,6 +56,11 @@ async def user_register(request: Request, email: str = Form(''), username: str =
             "password": password
         }
         response = await client.post("http://backend:20001/users/create", json=payload, headers=headers)
+
+        if response.status_code == status.HTTP_409_CONFLICT:
+            context['error'] = f"Користувач {email} вже зареєстрований"
+            response = templates.TemplateResponse('pages/register.html', context=context)
+            return response
 
 
 
