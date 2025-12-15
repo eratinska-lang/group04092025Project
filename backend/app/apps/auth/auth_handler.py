@@ -1,12 +1,14 @@
 from datetime import timedelta, datetime
+from uuid import uuid4
+
 from fastapi import HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
-import redis
 
 import jwt
 
 from apps.users.crud import user_manager
 from apps.users.models import User
+from redis_service import redis_service
 from settings import settings
 
 
@@ -19,10 +21,13 @@ class AuthHandler:
         access_token_payload = {
             'sub': user.email
         }
+
+        refresh_key = uuid4().hex
         refresh_token_payload = {
             'sub': user.email,
+            'key': refresh_key
         }
-        # todo process refresh token
+        redis_service.set_key(F"refresh_token_key:{refresh_key}", '1', settings.REFRESH_TOKEN_LIFETIME_MINUTES * 60)
 
         return {
             "access_token": await self.generate_token(access_token_payload,
@@ -61,6 +66,17 @@ class AuthHandler:
 
     async def get_token_pairs_by_refresh_token(self, refresh_token: str, session: AsyncSession) -> dict:
         payload = await self.decode_token(refresh_token)
+        refresh_token_key = payload.get("key")
+        if not refresh_token_key:
+            raise HTTPException(detail=f'Invalid refresh', status_code=status.HTTP_401_UNAUTHORIZED)
+
+        refresh_token_key_in_redis = redis_service.get(F"refresh_token_key:{refresh_token_key}")
+        if not refresh_token_key_in_redis:
+            raise HTTPException(detail=f'Redis token was used already',
+                                status_code=status.HTTP_401_UNAUTHORIZED)
+
+        redis_service.delete(F"refresh_token_key:{refresh_token_key}")
+
         user: User = await user_manager.get(session=session, model_field=User.email, value=payload['sub'])
         if not user:
             raise HTTPException(detail=f'User with email {payload["sub"]} not found',
