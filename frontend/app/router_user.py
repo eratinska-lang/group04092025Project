@@ -3,6 +3,8 @@ from fastapi.responses import RedirectResponse
 from fastapi.templating import Jinja2Templates
 import httpx
 
+from fastapi.templating import Jinja2Templates
+
 templates = Jinja2Templates(directory="templates")
 
 router_user = APIRouter()
@@ -20,6 +22,7 @@ async def index(request: Request):
 
     return response
 
+
 @router_user.get("/register")
 @router_user.post("/register")
 async def user_register(request: Request, email: str = Form(''), username: str = Form(''), password: str = Form('')):
@@ -32,6 +35,7 @@ async def user_register(request: Request, email: str = Form(''), username: str =
         "error": ""
     }
     if request.method == "GET":
+
         response = templates.TemplateResponse('pages/register.html', context=context)
         return response
 
@@ -66,4 +70,46 @@ async def user_register(request: Request, email: str = Form(''), username: str =
 
     response = RedirectResponse(request.url_for('index'), status_code=status.HTTP_303_SEE_OTHER)
 
+    return response
+
+
+@router_user.get("/login")
+@router_user.post("/login")
+async def user_login(request: Request, email: str = Form(''), password: str = Form('')):
+    context = {
+        "request": request,
+        "title": "Login",
+        "user": {},
+        "email": email,
+        "error": ""
+    }
+    if request.method == "GET":
+        response = templates.TemplateResponse('pages/login.html', context=context)
+        return response
+
+    async with httpx.AsyncClient() as client:
+        #get token
+        headers = {
+            "accept": "application/json",
+            "Content-Type": "application/x-www-form-urlencoded",
+        }
+        data = {
+            'username': email,
+            'password': password
+
+        }
+        response = await client.post("http://backend:20001/users/login", data=data, headers=headers)
+        tokens = response.json()
+
+        access_token = tokens['access_token']
+
+        #get user info
+        headers_user_info = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {access_token}",
+        }
+        response_user_info = await client.get("http://backend:20001/users/info", headers=headers_user_info)
+
+    context['user'] = response_user_info.json()
+    response = templates.TemplateResponse('pages/register.html', context=context)
     return response
